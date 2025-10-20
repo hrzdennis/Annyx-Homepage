@@ -1,0 +1,200 @@
+<template>
+  <div class="weibo-feed">
+    <div class="header">
+      <h3>Weibo Updates</h3>
+      <div class="header-actions">
+        <button class="refresh-btn" @click="fetchPosts">⟳ Refresh</button>
+        <button class="close-btn" @click="$emit('close')">×</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button
+        v-for="(m, i) in members"
+        :key="i"
+        :class="['tab', { active: currentIndex === i }]"
+        @click="selectMember(i)"
+        :title="m.name"
+      >
+        <img :src="m.icon" class="tab-icon" />
+      </button>
+    </div>
+
+    <div class="member-info">
+      <h4>{{ currentMember.name }}</h4>
+      <a :href="currentMember.link" target="_blank" rel="noopener">Visit Weibo ↗</a>
+    </div>
+
+    <div class="posts">
+      <div v-if="loading" class="loading">Loading posts...</div>
+      <div v-else-if="error" class="error">{{ error }}</div>
+      <div v-else>
+        <div v-for="(p, i) in posts" :key="i" class="post">
+          <div class="post-text" v-html="p.text"></div>
+          <div v-if="p.pics && p.pics.length" class="post-pics">
+            <img v-for="(pic, j) in p.pics" :key="j" :src="pic" />
+          </div>
+          <div class="post-time">{{ p.time }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import members from "../data/members.js";
+
+export default {
+  props: ["member"],
+  data() {
+    return {
+      members,
+      currentIndex: 0,
+      posts: [],
+      loading: false,
+      error: null,
+      proxy: "https://weibo-proxy-fux3.onrender.com",
+    };
+  },
+  computed: {
+    currentMember() {
+      return this.members[this.currentIndex];
+    },
+  },
+  mounted() {
+    if (this.member) {
+      const index = this.members.findIndex((m) => m.name === this.member.name);
+      this.currentIndex = index >= 0 ? index : 0;
+    }
+    this.fetchPosts();
+  },
+  methods: {
+    selectMember(i) {
+      this.currentIndex = i;
+      this.fetchPosts();
+    },
+    async fetchPosts() {
+      this.loading = true;
+      this.error = null;
+      this.posts = [];
+
+      try {
+        const uid = this.currentMember.uid;
+        const url = `${this.proxy}/https://m.weibo.cn/api/container/getIndex?type=uid&value=${uid}`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data.data || !data.data.cards) {
+          this.error = "No posts found or user is private.";
+          return;
+        }
+
+        this.posts = data.data.cards
+          .filter((c) => c.mblog)
+          .map((c) => ({
+            id: c.mblog.id,
+            text: c.mblog.text,
+            time: c.mblog.created_at,
+            pics: (c.mblog.pics || []).map((p) => p.url),
+          }))
+          .slice(0, 8);
+      } catch (err) {
+        console.error(err);
+        this.error = "Failed to load Weibo posts (CORS proxy issue).";
+      } finally {
+        this.loading = false;
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.weibo-feed {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 430px;
+  height: 100vh;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.3);
+  overflow-y: auto;
+  z-index: 100;
+  padding: 16px;
+  animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.refresh-btn, .close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 6px;
+}
+.refresh-btn:hover {
+  color: #007bff;
+}
+.tabs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+.tab {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.tab:hover {
+  transform: scale(1.1);
+}
+.tab.active {
+  border-color: #007bff;
+}
+.tab-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.posts {
+  font-size: 14px;
+}
+.post {
+  margin-bottom: 14px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+.post-pics img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+.post-time {
+  font-size: 12px;
+  color: #777;
+  text-align: right;
+}
+.loading, .error {
+  text-align: center;
+  margin-top: 20px;
+}
+</style>

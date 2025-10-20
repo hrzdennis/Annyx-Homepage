@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Annyx Homepage",
+  "version": "1.0",
+  "description": "Custom new tab homepage with Weibo feed and search.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://m.weibo.cn/*"
+  ],
+  "action": {
+    "default_title": "Open Annyx Homepage"
+  }
+}
