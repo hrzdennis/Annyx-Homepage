@@ -1,5 +1,5 @@
 
-My Custom Homepage (simple) - New Tab Extension
+Annyx-Homepage
 ================================================
 
 How to run (development):
